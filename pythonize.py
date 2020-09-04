@@ -202,7 +202,7 @@ def main(args):
             dataframes = nn_preprocess(dataframes)
 
         # save dataframes to h5 files
-        for name, df in dataframes.items():
+        for name, df in tqdm(dataframes.items(), leave=False):
             df.to_hdf('{}/{}.h5'.format(output_path, idir), name, complevel=9, complib='blosc:lz4')
 
     print(f'Finished in {time.time() - start} seconds.')
