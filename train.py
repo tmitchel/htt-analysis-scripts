@@ -75,14 +75,6 @@ def main(args):
     sig.loc[:, 'scaled_evtwt'] = sig.loc[:, 'scaled_evtwt'] * scaleto / len(sig)
     bkg.loc[:, 'scaled_evtwt'] = bkg.loc[:, 'scaled_evtwt'] * scaleto / len(bkg)
 
-    # build scaler
-    scaler = StandardScaler()
-    scaler.mean_ = scaler_info['mean'].values.reshape(1, -1)
-    scaler.scale_ = scaler_info['scale'].values.reshape(1, -1)
-    scaler.var_ = scaler_info['variance'].values.reshape(1, -1)
-    scaler.n_samples_seen_ = scaler_info['nsamples'].values.reshape(1, -1)
-    scaler_columns = scaler_info.index.values
-
     # setup training dataframe
     dataset = pd.concat([sig, bkg])
     for var in training_variables:
