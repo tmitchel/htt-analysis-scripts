@@ -143,7 +143,7 @@ def ac_reweighting(dataframes: dict, reweight: bool, config: dict) -> dict:
 
 def nn_preprocess(dataframes: dict) -> dict:
     """Store information for NN training (signal labels, scaled evtwts, and info for standardization."""
-    from sklearn.preprocessing import StandardScaler, MinMaxScaler
+    from sklearn.preprocessing import MinMaxScaler
     for name, df in dataframes.items():
         if name == 'metadata':
             continue
@@ -156,16 +156,6 @@ def nn_preprocess(dataframes: dict) -> dict:
 
         # normalize sample weights
         df['scaled_evtwt'] = MinMaxScaler(feature_range=(1., 2.)).fit_transform(df.evtwt.values.reshape(-1, 1))
-
-    # handle standardization using data distribution
-    scaler = StandardScaler()
-    scaler.fit(dataframes['data_obs'].values)
-    dataframes['standardization'] = pd.DataFrame({
-        'mean': scaler.mean_,
-        'scale': scaler.scale_,
-        'variance': scaler.var_,
-        'nsamples': scaler.n_samples_seen_
-    }).set_index(dataframes['data_obs'].columns.values)
 
     return dataframes
 

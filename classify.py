@@ -6,6 +6,7 @@ from glob import glob
 from os import path, mkdir
 from keras.models import load_model
 import pandas as pd
+import joblib
 
 training_variables = [
     'Q2V1', 'Q2V2', 'Phi', 'Phi1', 'costheta1', 'costheta2',
@@ -22,7 +23,7 @@ def main(args):
 
     model = load_model(args.model)
     nominal_data = pd.HDFStore(f'{args.input}/nominal.h5')
-    scaler_info = nominal_data.get('standardization')
+    scaler =  joblib.load(f'Output/models/{args.model}.pkl')
     nominal_data.close()
 
     pbar = tqdm(glob(f'{args.input}/*.h5'))
@@ -41,9 +42,10 @@ def main(args):
             cl_df = dataframes[name][training_variables].copy(deep=True)
 
             # standardization
-            for var in training_variables:
-                cl_df[var] -= scaler_info.loc[var, 'mean']
-                cl_df[var] /= scaler_info.loc[var, 'scale']
+            cl_df = pd.DataFrame(
+                scaler.transform(dataframes[name][training_variables].values),
+                columns=dataframes[name][training_variables].columns.values
+            )
 
             # classify and save
             new_df = dataframes[name]

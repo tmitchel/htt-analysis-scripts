@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import pandas as pd
 import seaborn as sns
+import joblib
 
 
 training_variables = [
@@ -59,15 +60,21 @@ def main(args):
     callbacks = build_callbacks(args.model)
 
     # load training data
-    input_data = pd.HDFStore(args.input)
-    sig = input_data.get(args.signal)
-    bkg = input_data.get(args.background)
-    scaler_info = input_data.get('standardization')
+    el_input_data = pd.HDFStore(args.el_input)
+    el_sig = el_input_data.get(args.signal)
+    el_bkg = el_input_data.get(args.background)
+
+    mu_input_data = pd.HDFStore(args.mu_input)
+    mu_sig = mu_input_data.get(args.signal)
+    mu_bkg = mu_input_data.get(args.background)
+
+    sig = pd.concat([el_sig, mu_sig])
+    bkg = pd.concat([el_bkg, mu_bkg])
 
     # apply VBF selection
     sig = sig[(sig.is_signal > 0) & (sig.njets > 1) & (sig.mjj > 300)]
     bkg = bkg[(bkg.is_signal > 0) & (bkg.njets > 1) & (bkg.mjj > 300)]
-    print(f'Unscaled No. Signal Events {len(sig)}')
+    print(f'Unscaled No.     Signal Events {len(sig)}')
     print(f'Unscaled No. Background Events {len(bkg)}')
 
     # scale signals to same number of events
@@ -77,10 +84,15 @@ def main(args):
 
     # setup training dataframe
     dataset = pd.concat([sig, bkg])
-    for var in training_variables:
-        dataset[var] -= scaler_info.loc[var, 'mean']
-        dataset[var] /= scaler_info.loc[var, 'scale']
-    print(dataset[training_variables])
+    
+    # handle standardization
+    scaler = StandardScaler()
+    scaler.fit(dataset[training_variables].values)
+    joblib.dump(scaler, f'Output/models/{args.model}.pkl')
+    dataset = pd.DataFrame(
+        scaler.transform(dataset.values),
+        columns=dataset.columns.values
+    )
 
    # split into testing and training sets
     train_data, test_data, train_labels, test_labels, train_weights, _ = train_test_split(
@@ -134,7 +146,8 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument('--model', '-m', required=True, help='name of the model to train')
-    parser.add_argument('--input', '-i', required=True, help='full name of input file')
+    parser.add_argument('--el-input', '-e', required=True, help='full name of electron input file')
+    parser.add_argument('--mu-input', '-m', required=True, help='full name of muon input file')
     parser.add_argument('--signal', '-s', required=True, help='name of signal file')
     parser.add_argument('--background', '-b', required=True, help='name of background file')
     parser.add_argument('--dont-plot', action='store_true', dest='dont_plot', help='don\'t make training plots')
