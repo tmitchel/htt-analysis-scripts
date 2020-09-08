@@ -89,9 +89,13 @@ def process_group(directory: str, files: dict, channel: str, year: str) -> dict:
     for name, ifile in files.items():
         # equivalent of hadding
         update_dfs = uproot.pandas.iterate(ifile, f'{channel}_tree')
+        current_dfs = []
         for update_df in update_dfs:
             update_df.fillna(-999, inplace=True)
-            dataframes[name] = update_df
+            current_dfs.append(update_df)
+        
+        if len(current_dfs) > 0:
+            dataframes[name] = pd.concat(current_dfs)
 
     dataframes['metadata'] = pd.DataFrame({'channel': [channel], 'year': [year]})
     return dataframes

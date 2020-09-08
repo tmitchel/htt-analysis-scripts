@@ -89,10 +89,13 @@ def main(args):
     scaler = StandardScaler()
     scaler.fit(dataset[training_variables].values)
     joblib.dump(scaler, f'Output/models/{args.model}.pkl')
-    dataset = pd.DataFrame(
-        scaler.transform(dataset.values),
-        columns=dataset.columns.values
+    scaled = pd.DataFrame(
+        scaler.transform(dataset[training_variables].values),
+        columns=training_variables
     )
+    scaled['signalLabel'] = dataset.signalLabel.values
+    scaled['scaled_evtwt'] = dataset.scaled_evtwt.values
+    dataset = scaled
 
    # split into testing and training sets
     train_data, test_data, train_labels, test_labels, train_weights, _ = train_test_split(
@@ -145,7 +148,7 @@ def main(args):
 if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--model', '-m', required=True, help='name of the model to train')
+    parser.add_argument('--model', '-n', required=True, help='name of the model to train')
     parser.add_argument('--el-input', '-e', required=True, help='full name of electron input file')
     parser.add_argument('--mu-input', '-m', required=True, help='full name of muon input file')
     parser.add_argument('--signal', '-s', required=True, help='name of signal file')

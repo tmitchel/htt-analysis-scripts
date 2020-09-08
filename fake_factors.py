@@ -2,12 +2,12 @@ import time
 import pandas as pd
 import numpy as np
 import boost_histogram as bh
-from ApplyFF import FFApplicationTool
-
+# from ApplyFF import FFApplicationTool
+np.seterr(divide='ignore', invalid='ignore')
 
 def build_histogram(name):
     """Build 2d hist to fill with fake fraction."""
-    bh.Histogram(
+    return bh.Histogram(
         bh.axis.Variable([0, 50, 80, 100, 110, 120, 130, 150, 170, 200, 250, 1000]),  # vis_mass
         bh.axis.Variable([-0.5, 0.5, 1.5, 15])  # njets
     )
@@ -16,8 +16,8 @@ def build_histogram(name):
 def main(args):
     start = time.time()
     dataframes = pd.HDFStore(args.input)
-    channel = dataframes['metadata'].channel
-    year = dataframes['metadata'].year
+    channel = dataframes['metadata'].channel.values[0]
+    year = dataframes['metadata'].year.values[0]
     categories = [channel + pref for pref in ['_inclusive', '_0jet', '_boosted', '_vbf']]
 
     inputs = {
@@ -53,7 +53,6 @@ def main(args):
                 ((anti_iso_events['njets'] > 1) & anti_iso_events['mjj'] < 300)
             ]
             vbf_events = anti_iso_events[(anti_iso_events['njets'] > 1) & (anti_iso_events['mjj'] > 300)]
-
             fractions[frac][f'{channel}_inclusive'].fill(
                 anti_iso_events.vis_mass.values, anti_iso_events.njets.values, weight=anti_iso_events.evtwt.values)
             fractions[frac][f'{channel}_0jet'].fill(
@@ -64,19 +63,23 @@ def main(args):
                 vbf_events.vis_mass.values, vbf_events.njets.values, weight=vbf_events.evtwt.values)
 
     for cat in categories:
-        qcd_values = fractions['frac_data'][cat].copy(deep=True).to_numpy()
-        qcd_values -= fractions['frac_w'][cat].to_numpy()
-        qcd_values -= fractions['frac_tt'][cat].to_numpy()
-        qcd_values -= fractions['frac_real'][cat].to_numpy()
+        qcd_values = fractions['frac_data'][cat].copy(deep=True).to_numpy()[0]
+        qcd_values -= fractions['frac_w'][cat].to_numpy()[0]
+        qcd_values -= fractions['frac_tt'][cat].to_numpy()[0]
+        qcd_values -= fractions['frac_real'][cat].to_numpy()[0]
         qcd_values = np.clip(qcd_values, 0, None)
-        fractions['frac_qcd'][cat].fill(qcd_values)
+        fractions['frac_qcd'][cat][...] = qcd_values
 
-        denom = qcd_values + fractions['frac_w'][cat].to_numpy() + fractions['frac_tt'][cat].to_numpy()
-        fractions['frac_w'][cat].view().values = fractions['frac_w'][cat].to_numpy() / denom
-        fractions['frac_tt'][cat].view().values = fractions['frac_tt'][cat].to_numpy() / denom
-        fractions['frac_qcd'][cat].view().values = fractions['frac_qcd'][cat].to_numpy() / denom
+        denom = qcd_values + fractions['frac_w'][cat].to_numpy()[0] + fractions['frac_tt'][cat].to_numpy()[0]
+        print('Category: {}'.format(cat))
+        print('\tfrac_w: {}'.format(fractions['frac_w'][cat].sum() / sum(sum(denom))))
+        print('\tfrac_tt: {}'.format(fractions['frac_tt'][cat].sum() / sum(sum(denom))))
+        print('\tfrac_qcd: {}'.format(fractions['frac_qcd'][cat].sum() / sum(sum(denom))))
+        print('\tfrac_real: {}'.format(fractions['frac_real'][cat].sum() / sum(sum(denom))))
 
-
+        fractions['frac_w'][cat][...] = fractions['frac_w'][cat].to_numpy()[0] / denom
+        fractions['frac_tt'][cat][...] = fractions['frac_tt'][cat].to_numpy()[0] / denom
+        fractions['frac_qcd'][cat][...] = fractions['frac_qcd'][cat].to_numpy()[0] / denom
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
